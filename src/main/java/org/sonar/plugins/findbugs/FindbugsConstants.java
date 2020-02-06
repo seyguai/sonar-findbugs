@@ -37,6 +37,8 @@ public final class FindbugsConstants {
 
   public static final String REPORT_PATHS = "sonar.findbugs.reportpaths";
 
+  public static final String GROUP_FILES_BY_TARGET_CLASSES_PROPERTY = "sonar.findbugs.prefertargetclasses";
+  public static final boolean GROUP_FILES_BY_TARGET_CLASSES_DEFAULT_VALUE = true;
 
   public static final String EXCLUDES_FILTERS_PROPERTY = "sonar.findbugs.excludesFilters";
 

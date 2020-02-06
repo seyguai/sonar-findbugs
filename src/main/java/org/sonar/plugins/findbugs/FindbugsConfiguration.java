@@ -30,9 +30,11 @@ import java.io.InputStream;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -99,18 +101,32 @@ public class FindbugsConfiguration implements Startable {
       findbugsProject.addAuxClasspathEntry(file.getCanonicalPath());
     }
 
+    boolean groupByTargetClasses = isGroupByTargetClasses();
+    String targetClassesPrefix = File.separatorChar + "target" + File.separatorChar + "classes" + File.separatorChar;
+    Set<String> targetClassesProcessed = new HashSet<>();
     boolean hasJspFiles = fileSystem.hasFiles(fileSystem.predicates().hasLanguage("jsp"));
     boolean hasPrecompiledJsp = false;
     for (File classToAnalyze : classFilesToAnalyze) {
       String absolutePath = classToAnalyze.getCanonicalPath();
       if(hasJspFiles && !hasPrecompiledJsp
               && (absolutePath.endsWith("_jsp.class") || //Jasper
-                  absolutePath.contains("/jsp_servlet/")) //WebLogic
+                  absolutePath.contains("/jsp_servlet/")) //WebLogic // does not work on Windows
               ) {
         hasPrecompiledJsp = true;
       }
-      if(!"module-info.class".equals(classToAnalyze.getName())) {
+      
+      if ("module-info.class".equals(classToAnalyze.getName())) {
+        continue;
+      }
+      
+      int targetClassesIndex = absolutePath.indexOf(targetClassesPrefix);
+      if (!groupByTargetClasses || targetClassesIndex == -1) {
         findbugsProject.addFile(absolutePath);
+      } else {
+        String targetClassesPath = absolutePath.substring(0, targetClassesIndex + targetClassesPrefix.length());
+        if (targetClassesProcessed.add(targetClassesPath)) { // only register once
+          findbugsProject.addFile(targetClassesPath);
+        }
       }
     }
 
@@ -260,6 +276,10 @@ public class FindbugsConfiguration implements Startable {
 
   public boolean isAllowUncompiledCode() {
     return config.getBoolean(FindbugsConstants.ALLOW_UNCOMPILED_CODE).orElse(FindbugsConstants.ALLOW_UNCOMPILED_CODE_VALUE);
+  }
+  
+  public boolean isGroupByTargetClasses() {
+    return config.getBoolean(FindbugsConstants.GROUP_FILES_BY_TARGET_CLASSES_PROPERTY).orElse(FindbugsConstants.GROUP_FILES_BY_TARGET_CLASSES_DEFAULT_VALUE);
   }
 
   private File jsr305Lib;
